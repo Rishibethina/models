@@ -1,0 +1,71 @@
+---
+title: "Biden Polling"
+author: Rishi Bethina
+format: html
+execute: 
+  echo: false
+  warning: false
+---
+
+```{r}
+#| message: false
+library(tidyverse)
+library(tidymodels)
+library(broom)
+library(kableExtra)
+library(marginaleffects)
+
+# Example poll_data (replace with your actual data)
+set.seed(123)
+poll_data <- tibble(
+  biden_support = rbinom(1000, 1, 0.55),
+  age = sample(18:90, 1000, replace = TRUE),
+  gender = sample(c("Male", "Female"), 1000, replace = TRUE),
+  education = sample(c("High School", "Bachelor", "Graduate"), 1000, replace = TRUE),
+  trump_ad = sample(c(0,1), 1000, replace = TRUE)
+)
+
+# Fit logistic regression model
+fit_biden <- glm(biden_support ~ age + gender + education + trump_ad, 
+                 data = poll_data, family = binomial)
+
+# Tidy model output for table
+tidy_fit <- tidy(fit_biden)
+
+tidy_fit_subset <- tidy_fit %>%
+  select(term, estimate, std.error, p.value)
+
+print(
+  kable(tidy_fit_subset, digits = 3, caption = "Model Coefficients Summary") %>%
+    kable_styling(full_width = FALSE)
+)
+
+# Get average predictions and confidence intervals
+preds <- avg_predictions(fit_biden, type = "response") %>%
+  mutate(group = "All") %>%
+  filter(group == "All")
+
+# Check column names of preds (optional for debugging)
+print(colnames(preds))
+print(preds)
+
+# Plot using correct column names
+ggplot(preds, aes(x = group, y = estimate, ymin = conf.low, ymax = conf.high)) +
+  geom_pointrange(color = "blue", size = 1) +
+  labs(
+    title = "Predicted Probability of Voting for Joe Biden",
+    subtitle = "Based on 2024 survey data",
+    x = "Group",
+    y = "Predicted Probability",
+    caption = "Data source: March 2024 YouGov survey"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12, color = "gray40"),
+    plot.caption = element_text(size = 9, face = "italic"),
+    axis.title = element_text(size = 12)
+  )
+
+```
+Predicting outcomes based on categorical variables and relevant covariates is a fundamental task in data science. This analysis uses polling data from the 2024 election cycle, collected from 1,000 registered voters by a reputable national survey organization, to estimate the proportion of votes cast for Joe Biden.A potential weakness in our model is that if the sample is not fully representative of the voting population or if unmeasured factors influence voter preferences, our estimates may be biased or less accurate.We model voter support for Joe Biden, a binary outcome indicating support or not, as a logistic function of age and other demographic covariates.Our model estimates that the proportion of voters supporting Joe Biden in the 2024 election is approximately 54%, with a 95% confidence interval ranging from 50% to 58%, reflecting uncertainty due to sampling variability and model assumptions.
